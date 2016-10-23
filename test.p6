@@ -1,11 +1,4 @@
 use lib 'lib';
+use Physics::GR;
 
-{
-    use Physics::GR;
-    say unit-matrix(3) * vector(1, 2, 3);
-}
-
-{   # TODO
-    use Physics::GR <*>;
-    say GR::unit-matrix(3) * GR::vector(1, 2, 3);
-}
+say 5 * GR.matrix(<1 0 0>, <0 2 0>, <0 0 3>) * GR.vector(1, 2, 3);

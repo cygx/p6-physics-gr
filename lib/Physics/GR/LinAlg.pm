@@ -1,4 +1,4 @@
-unit module Physics::GR::LinAlg;
+unit package Physics::GR;
 
 enum IndexType is export <COVARIANT CONTRAVARIANT>;
 
@@ -9,12 +9,12 @@ role Tensor is export {
     method dimension { ... }
     method AT-POS(|) { ... }
     method EXISTS-POS(|) { ... }
-    proto method MULTIPLY($) {*}
-    proto method RMULTIPLY($) {*}
-    multi method MULTIPLY($a: $b) is hidden-from-backtrace {
+    proto method MUL($) {*}
+    proto method RMUL($) {*}
+    multi method MUL($a: $b) is hidden-from-backtrace {
         fail "Don't know how to multiply {$a.^name} and {$b.^name}";
     }
-    multi method RMULTIPLY($b: $a) is hidden-from-backtrace {
+    multi method RMUL($b: $a) is hidden-from-backtrace {
         fail "Don't know how to multiply {$a.^name} and {$b.^name}";
     }
 }
@@ -41,10 +41,10 @@ class Scalar_ does Tensor is export {
     method dimension { 0 }
     method AT-POS(|) { !!! }
     method EXISTS-POS(|) { !!! }
-    multi method MULTIPLY(Scalar_ $s) { Scalar_.new($!value * $s.value) }
-    multi method MULTIPLY(Numeric $x) { Scalar_.new($!value * $x) }
-    multi method RMULTIPLY(Scalar_ $s) { Scalar_.new($!value * $s.value) }
-    multi method RMULTIPLY(Numeric $x) { Scalar_.new($!value * $x) }
+    multi method MUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
+    multi method MUL(Numeric $x) { Scalar_.new($!value * $x) }
+    multi method RMUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
+    multi method RMUL(Numeric $x) { Scalar_.new($!value * $x) }
 }
 
 role Vectorial[\TYPE] does Tensor is export {
@@ -58,16 +58,16 @@ role Vectorial[\TYPE] does Tensor is export {
     method dimension { $!components.elems }
     method AT-POS(|c) { $!components.AT-POS(|c) }
     method EXISTS-POS(|c) { $!components.EXISTS-POS(|c) }
-    multi method MULTIPLY(Scalar_ $s) {
+    multi method MUL(Scalar_ $s) {
         self.new($!components.elems, $!components.map(* * $s.value));
     }
-    multi method MULTIPLY(Numeric $x) {
+    multi method MUL(Numeric $x) {
         self.new($!components.elems, $!components.map(* * $x));
     }
-    multi method RMULTIPLY(Scalar_ $s) {
+    multi method RMUL(Scalar_ $s) {
         self.new($!components.elems, $!components.map($s.value * *));
     }
-    multi method RMULTIPLY(Numeric $x) {
+    multi method RMUL(Numeric $x) {
         self.new($!components.elems, $!components.map($x * *));
     }
 }
@@ -76,7 +76,7 @@ class Vector does Vectorial[CONTRAVARIANT] is export {
     multi method gist(::?CLASS:D:) {
         "vector({ $!components.map(*.gist).join(', ') })";
     }
-    multi method RMULTIPLY(Covector $v) {
+    multi method RMUL(Covector $v) {
         Scalar_.new([+] self.components Z* $v.components);
     }
 }
@@ -85,7 +85,7 @@ class Covector does Vectorial[COVARIANT] is export {
     multi method gist(::?CLASS:D:) {
         "covector({ $!components.map(*.gist).join(', ') })";
     }
-    multi method MULTIPLY(Vector $v) {
+    multi method MUL(Vector $v) {
         Scalar_.new([+] self.components Z* $v.components);
     }
 }
@@ -116,7 +116,7 @@ class Matrix does Tensor is export {
     method type { (CONTRAVARIANT, COVARIANT) }
     method AT-POS(|c) { $!elements.AT-POS(|c) }
     method EXISTS-POS(|c) { $!elements.EXISTS-POS(|c) }
-    multi method MULTIPLY($a: Matrix $b) {
+    multi method MUL($a: Matrix $b) {
         PRE $a.shape[1] == $b.shape[0];
         my \K = $a.shape[1];
         my \M = $a.shape[0];
@@ -129,11 +129,21 @@ class Matrix does Tensor is export {
             })
         );
     }
-    multi method MULTIPLY(Vector $v) {
+    multi method MUL(Vector $v) {
         PRE self.shape[1] == $v.dimension;
         my (\M, \N) = self.shape;
-        Vector.new();
+        Vector.new(M, (for ^M -> $i {
+            [+] ($!elements[$i;$_] * $v[$_] for ^N);
+        }));
     }
+
+    sub smul($m, $x) {
+        my (\M, \N) = $m.shape;
+        Matrix.new(M, N, (for ^M -> $i { (for ^N -> $j { $m[$i;$j] * $x }) }));
+    }
+
+    multi method MUL(Numeric $x) { smul(self, $x) }
+    multi method RMUL(Numeric $x) { smul(self, $x) }
 }
 
 class HomogeneousTensor does Tensor is export {
@@ -146,18 +156,12 @@ class HomogeneousTensor does Tensor is export {
     method EXISTS-POS(|) { !!! }    
 }
 
-sub scalar($value) is export { Scalar_.new($value) }
-sub vector(*@init) is export { Vector.new(@init.elems, @init) }
-sub covector(*@init) is export { Covector.new(@init.elems, @init) }
-sub matrix(**@init) is export { Matrix.new(@init.elems, @init[0].elems, @init) }
-sub row-matrix(*@row) is export { Matrix.new(1, @row.elems, [@row,]) }
-sub col-matrix(*@col) is export { Matrix.new(@col.elems, 1, @col.map({ [$_] })) }
-sub unit-matrix(Int $n) is export { Matrix.unit($n) }
-
-multi infix:<*>(Tensor $a, Tensor $b) is export {
-    $a.MULTIPLY($b) // $b.RMULTIPLY($a);
+role LinAlg is export {
+    method scalar($value) { Scalar_.new($value) }
+    method vector(*@init) { Vector.new(@init.elems, @init) }
+    method covector(*@init) { Covector.new(@init.elems, @init) }
+    method matrix(**@init) { Matrix.new(@init.elems, @init[0].elems, @init) }
+    method row-matrix(*@row) { Matrix.new(1, @row.elems, [@row,]) }
+    method col-matrix(*@col) { Matrix.new(@col.elems, 1, @col.map({ [$_] })) }
+    method unit-matrix(Int $n) { Matrix.unit($n) }
 }
-multi infix:<*>(Tensor $a, $b) is export { $a.MULTIPLY($b) }
-multi infix:<*>($a, Tensor $b) is export { $b.RMULTIPLY($a) }
-
-multi infix:<(x)>(Tensor $a, Tensor $b) is export { ... }

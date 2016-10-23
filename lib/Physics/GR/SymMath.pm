@@ -1,3 +1,3 @@
-unit module Physics::GR::SymMath;
+unit package Physics::GR;
 
-sub symmath-dummy is export {}
+role SymMath is export {}

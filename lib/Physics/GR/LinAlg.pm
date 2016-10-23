@@ -9,6 +9,7 @@ role Tensor is export {
     method dimension { ... }
     method AT-POS(|) { ... }
     method EXISTS-POS(|) { ... }
+    method ASSIGN-POS(|) { ... }
     proto method MUL($) {*}
     proto method RMUL($) {*}
     multi method MUL($a: $b) is hidden-from-backtrace {
@@ -16,6 +17,10 @@ role Tensor is export {
     }
     multi method RMUL($b: $a) is hidden-from-backtrace {
         fail "Don't know how to multiply {$a.^name} and {$b.^name}";
+    }
+    method set(**@args) {
+        self.ASSIGN-POS(|$_) for @args;
+        self;
     }
 }
 
@@ -41,6 +46,7 @@ class Scalar_ does Tensor is export {
     method dimension { 0 }
     method AT-POS(|) { !!! }
     method EXISTS-POS(|) { !!! }
+    method ASSIGN-POS(|) { !!! }
     multi method MUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
     multi method MUL(Numeric $x) { Scalar_.new($!value * $x) }
     multi method RMUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
@@ -58,6 +64,7 @@ role Vectorial[\TYPE] does Tensor is export {
     method dimension { $!components.elems }
     method AT-POS(|c) { $!components.AT-POS(|c) }
     method EXISTS-POS(|c) { $!components.EXISTS-POS(|c) }
+    method ASSIGN-POS(|c) { $!components.ASSIGN-POS(|c) }
     multi method MUL(Scalar_ $s) {
         self.new($!components.elems, $!components.map(* * $s.value));
     }
@@ -90,32 +97,22 @@ class Covector does Vectorial[COVARIANT] is export {
     }
 }
 
-sub mat($m, $n, @tuples) {
-    my @mat = [0 xx $n] xx $m;
-    for @tuples -> ($i, $j, $v) {
-        @mat[$i;$j] = $v;
-    }
-    @mat;
-}
-
 class Matrix does Tensor is export {
     has $.elements;
     has $.dimension;
     method new(Int $m, Int $n, @init = (0 xx $n) xx $m) {
         my @m[$m;$n] = @init>>.list;
         self.bless(
-            dimension => $m == $n ?? $m !! NaN,
+            dimension => $m == $n ?? $m !! Int,
             elements => @m,
         );
-    }
-    method unit(Int $n) {
-        self.new($n, $n, mat($n, $n, (^$n Z ^$n Z 1 xx *)));
     }
     method rank { 2 }
     method shape { $!elements.shape }
     method type { (CONTRAVARIANT, COVARIANT) }
     method AT-POS(|c) { $!elements.AT-POS(|c) }
     method EXISTS-POS(|c) { $!elements.EXISTS-POS(|c) }
+    method ASSIGN-POS(|c) { $!elements.ASSIGN-POS(|c) }
     multi method MUL($a: Matrix $b) {
         PRE $a.shape[1] == $b.shape[0];
         my \K = $a.shape[1];
@@ -150,10 +147,11 @@ class HomogeneousTensor does Tensor is export {
     has $.elements;
     has $.dimension;
     has $.type;
-    has $.shape;
-    has $.rank;
-    method AT-POS(|) { !!! }
-    method EXISTS-POS(|) { !!! }    
+    method rank { $!type.elems }
+    method shape { $!elements.shape }
+    method AT-POS(|c) { $!elements.AT-POS(|c) }
+    method EXISTS-POS(|c) { $!elements.EXISTS-POS(|c) }
+    method ASSIGN-POS(|c) { $!elements.ASSIGN-POS(|c) }
 }
 
 role LinAlg is export {
@@ -163,5 +161,23 @@ role LinAlg is export {
     method matrix(**@init) { Matrix.new(@init.elems, @init[0].elems, @init) }
     method row-matrix(*@row) { Matrix.new(1, @row.elems, [@row,]) }
     method col-matrix(*@col) { Matrix.new(@col.elems, 1, @col.map({ [$_] })) }
-    method unit-matrix(Int $n) { Matrix.unit($n) }
+    method unit-matrix(Int $n) {
+        Matrix.new($n, $n).set(|(^$n Z ^$n Z 1 xx *));
+    }
+    multi method tensor(Str :$sig!, Int :$dim!) {
+        my $type := $sig.comb.map({
+            when 'c' { COVARIANT }
+            when 'k' { CONTRAVARIANT }
+            default { die "Illegal tensor signature '$_'" }
+        }).list;
+        my $dimension := $dim;
+        my $rank := $type.elems;
+        my $shape := ($dim xx $rank).list;
+        my $elements := Array.new(:$shape, $_) given do {
+            my $init := 0;
+            $init := $init xx $dim for ^$rank;
+            $init;
+        }
+        HomogeneousTensor.new(:$elements, :$dimension, :$type);
+    }
 }

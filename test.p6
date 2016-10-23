@@ -1,4 +1,5 @@
 use lib 'lib';
 use Physics::GR;
 
-say 5 * GR.matrix(<1 0 0>, <0 2 0>, <0 0 3>) * GR.vector(1, 2, 3);
+say GR.unit-matrix(3);
+say GR.tensor(:sig<cc>, :2dim).set((0, 1, 42));

@@ -1,8 +1,13 @@
 unit package Physics::GR;
+use Physics::GR::Symbolic;
 
-class Term is export {
+class Term does Symbolic is export {
     has Numeric $.prefactor;
     has Mix $.powers;
+
+    method new {
+        self.bless(|%_) does Symbolic; # Bug!
+    }
 
     method Str {
         my $pre = do given $!prefactor {
@@ -22,6 +27,12 @@ class Term is export {
             prefactor => 1/$!prefactor,
             powers => $!powers.pairs.map({ .key => -.value }).Mix
         );
+    }
+
+    multi method MUL(0) { 0 }
+    multi method MUL(NaN) { NaN }
+    multi method MUL(Numeric $x) {
+        Term.new(:prefactor($x * $!prefactor), :$!powers);
     }
 }
 

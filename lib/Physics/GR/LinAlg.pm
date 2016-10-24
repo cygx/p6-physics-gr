@@ -1,4 +1,9 @@
 unit package Physics::GR;
+use Physics::GR::Symbolic;
+
+multi infix:<*>(Symbolic $a, Symbolic $b) { $a.MUL($b) }
+multi infix:<*>(Symbolic $a, Numeric $b) { $a.MUL($b) }
+multi infix:<*>(Numeric $a, Symbolic $b) { $b.MUL($a) }
 
 enum IndexType is export <COVARIANT CONTRAVARIANT>;
 
@@ -49,8 +54,10 @@ class Skalar does Tensor is export {
     method ASSIGN-POS(|) { !!! }
     multi method MUL(Skalar $s) { Skalar.new($!value * $s.value) }
     multi method MUL(Numeric $x) { Skalar.new($!value * $x) }
+    multi method MUL(Symbolic $x) { Skalar.new($!value * $x) }
     multi method RMUL(Skalar $s) { Skalar.new($!value * $s.value) }
     multi method RMUL(Numeric $x) { Skalar.new($!value * $x) }
+    multi method RMUL(Symbolic $x) { Skalar.new($!value * $x) }
 }
 
 role Vectorial[\TYPE] does Tensor is export {
@@ -71,10 +78,16 @@ role Vectorial[\TYPE] does Tensor is export {
     multi method MUL(Numeric $x) {
         self.new($!components.elems, $!components.map(* * $x));
     }
+    multi method MUL(Symbolic $x) {
+        self.new($!components.elems, $!components.map(* * $x));
+    }
     multi method RMUL(Skalar $s) {
         self.new($!components.elems, $!components.map($s.value * *));
     }
     multi method RMUL(Numeric $x) {
+        self.new($!components.elems, $!components.map($x * *));
+    }
+    multi method RMUL(Symbolic $x) {
         self.new($!components.elems, $!components.map($x * *));
     }
 }
@@ -140,7 +153,9 @@ class Matrix does Tensor is export {
     }
 
     multi method MUL(Numeric $x) { smul(self, $x) }
+    multi method MUL(Symbolic $x) { smul(self, $x) }
     multi method RMUL(Numeric $x) { smul(self, $x) }
+    multi method RMUL(Symbolic $x) { smul(self, $x) }
 }
 
 class HomogeneousTensor does Tensor is export {

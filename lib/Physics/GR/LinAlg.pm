@@ -24,13 +24,13 @@ role Tensor is export {
     }
 }
 
-class Scalar_ { ... }
+class Skalar { ... }
 class Vector { ... }
 class Covector { ... }
 class Matrix { ... }
 class HomogeneousTensor { ... }
 
-class Scalar_ does Tensor is export {
+class Skalar does Tensor is export {
     has $.value;
     method Numeric {
         $!value ~~ Numeric
@@ -38,7 +38,7 @@ class Scalar_ does Tensor is export {
             !! fail "Scalar of type {$!value.^name} is not numeric";
     }
     method new($value) { self.bless(:$value) }
-    multi method gist(::?CLASS:D:) { "scalar({ $!value.gist })" }
+    multi method gist(::?CLASS:D:) { "skalar({ $!value.gist })" }
     method Str { $!value ~~ Real ?? ~$!value !! "({$!value})" }
     method rank { 0 }
     method shape { () }
@@ -47,10 +47,10 @@ class Scalar_ does Tensor is export {
     method AT-POS(|) { !!! }
     method EXISTS-POS(|) { !!! }
     method ASSIGN-POS(|) { !!! }
-    multi method MUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
-    multi method MUL(Numeric $x) { Scalar_.new($!value * $x) }
-    multi method RMUL(Scalar_ $s) { Scalar_.new($!value * $s.value) }
-    multi method RMUL(Numeric $x) { Scalar_.new($!value * $x) }
+    multi method MUL(Skalar $s) { Skalar.new($!value * $s.value) }
+    multi method MUL(Numeric $x) { Skalar.new($!value * $x) }
+    multi method RMUL(Skalar $s) { Skalar.new($!value * $s.value) }
+    multi method RMUL(Numeric $x) { Skalar.new($!value * $x) }
 }
 
 role Vectorial[\TYPE] does Tensor is export {
@@ -65,13 +65,13 @@ role Vectorial[\TYPE] does Tensor is export {
     method AT-POS(|c) { $!components.AT-POS(|c) }
     method EXISTS-POS(|c) { $!components.EXISTS-POS(|c) }
     method ASSIGN-POS(|c) { $!components.ASSIGN-POS(|c) }
-    multi method MUL(Scalar_ $s) {
+    multi method MUL(Skalar $s) {
         self.new($!components.elems, $!components.map(* * $s.value));
     }
     multi method MUL(Numeric $x) {
         self.new($!components.elems, $!components.map(* * $x));
     }
-    multi method RMUL(Scalar_ $s) {
+    multi method RMUL(Skalar $s) {
         self.new($!components.elems, $!components.map($s.value * *));
     }
     multi method RMUL(Numeric $x) {
@@ -84,7 +84,7 @@ class Vector does Vectorial[CONTRAVARIANT] is export {
         "vector({ $!components.map(*.gist).join(', ') })";
     }
     multi method RMUL(Covector $v) {
-        Scalar_.new([+] self.components Z* $v.components);
+        Skalar.new([+] self.components Z* $v.components);
     }
 }
 
@@ -93,7 +93,7 @@ class Covector does Vectorial[COVARIANT] is export {
         "covector({ $!components.map(*.gist).join(', ') })";
     }
     multi method MUL(Vector $v) {
-        Scalar_.new([+] self.components Z* $v.components);
+        Skalar.new([+] self.components Z* $v.components);
     }
 }
 
@@ -155,7 +155,7 @@ class HomogeneousTensor does Tensor is export {
 }
 
 role LinAlg is export {
-    method scalar($value) { Scalar_.new($value) }
+    method skalar($value) { Skalar.new($value) }
     method vector(*@init) { Vector.new(@init.elems, @init) }
     method covector(*@init) { Covector.new(@init.elems, @init) }
     method matrix(**@init) { Matrix.new(@init.elems, @init[0].elems, @init) }

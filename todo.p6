@@ -1,10 +1,4 @@
 class Term {
-    method Numeric { $!pows ?? NaN !! $!pre }
-
-    method mul(Term $a, Term $b) {
-        Term.new(:pre($a.pre * $b.pre), :pows($a.pows (+) $b.pows))
-    }
-
     multi method diff(Str $var where not $!pows{$var}) { 0 }
     multi method diff(Str $var where $!pows.elems == 1 && $!pows{$var} == 1) {
         $!pre;

@@ -1,7 +1,7 @@
 unit package Physics;
 use Physics::GR::LinAlg;
 use Physics::GR::SymMath;
-use Physics::GR::Symbolic;
+use Physics::GR::Categories;
 
 class GR is export(:MANDATORY, :no-ops) {
     also does LinAlg;
@@ -10,13 +10,14 @@ class GR is export(:MANDATORY, :no-ops) {
 
 multi infix:<(x)>(Tensor $a, Tensor $b) is export { ... }
 
-multi infix:<*>(Tensor $a, Tensor $b) is export { $a.MUL($b) // $b.RMUL($a) }
-multi infix:<*>(Tensor $a, Numeric $b) is export { $a.MUL($b) }
-multi infix:<*>(Tensor $a, Symbolic $b) is export { $a.MUL($b) }
-multi infix:<*>(Numeric $a, Tensor $b) is export { $b.RMUL($a) }
-multi infix:<*>(Symbolic $a, Tensor $b) is export { $b.RMUL($a) }
+multi prefix:<->(Symbolic $a) is export { $a.NEG }
 
-multi infix:<*>(Term $a, Numeric $b) is export { $a.MUL($b) }
-multi infix:<*>(Term $a, Symbolic $b) is export { $a.MUL($b) }
-multi infix:<*>(Symbolic $a, Term $b) is export { $b.MUL($a) }
-multi infix:<*>(Numeric $a, Term $b) is export { $b.MUL($a) }
+multi infix:<*>(Algebraic $a, Algebraic $b) is export { $a.MUL($b) // $b.RMUL($a) }
+multi infix:<*>(Algebraic $a, Numeric $b) is export { $a.MUL($b) }
+multi infix:<*>(Algebraic $a, Symbolic $b) is export { $a.MUL($b) }
+multi infix:<*>(Numeric $a, Algebraic $b) is export { $b.RMUL($a) }
+multi infix:<*>(Symbolic $a, Algebraic $b) is export { $b.RMUL($a) }
+
+multi infix:<*>(Symbolic $a, Symbolic $b) is export { $a.MUL($b) // $b.RMUL($a) }
+multi infix:<*>(Symbolic $a, Numeric $b) is export { $a.MUL($b) }
+multi infix:<*>(Numeric $a, Symbolic $b) is export { $b.RMUL($a) }

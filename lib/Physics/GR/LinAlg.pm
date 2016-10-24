@@ -1,5 +1,5 @@
 unit package Physics::GR;
-use Physics::GR::Symbolic;
+use Physics::GR::Categories;
 
 multi infix:<*>(Symbolic $a, Symbolic $b) { $a.MUL($b) }
 multi infix:<*>(Symbolic $a, Numeric $b) { $a.MUL($b) }
@@ -7,7 +7,7 @@ multi infix:<*>(Numeric $a, Symbolic $b) { $b.MUL($a) }
 
 enum IndexType is export <COVARIANT CONTRAVARIANT>;
 
-role Tensor is export {
+role Tensor does Algebraic is export {
     method rank { ... }
     method shape { ... }
     method type { ... }
@@ -15,14 +15,6 @@ role Tensor is export {
     method AT-POS(|) { ... }
     method EXISTS-POS(|) { ... }
     method ASSIGN-POS(|) { ... }
-    proto method MUL($) {*}
-    proto method RMUL($) {*}
-    multi method MUL($a: $b) is hidden-from-backtrace {
-        fail "Don't know how to multiply {$a.^name} and {$b.^name}";
-    }
-    multi method RMUL($b: $a) is hidden-from-backtrace {
-        fail "Don't know how to multiply {$a.^name} and {$b.^name}";
-    }
     method set(**@args) {
         self.ASSIGN-POS(|$_) for @args;
         self;

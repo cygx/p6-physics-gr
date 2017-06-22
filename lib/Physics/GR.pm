@@ -1,12 +1,13 @@
-unit package Physics;
+use Physics::GR::Categories;
 use Physics::GR::LinAlg;
 use Physics::GR::SymMath;
-use Physics::GR::Categories;
 
-class GR is export(:MANDATORY, :no-ops) {
-    also does LinAlg;
-    also does SymMath;
+class Physics::GR {
+    also does Physics::GR::LinAlg;
+    also does Physics::GR::SymMath;
 }
+
+sub EXPORT { BEGIN Map.new((gr => Physics::GR)) }
 
 multi infix:<(x)>(Tensor $a, Tensor $b) is export { ... }
 
